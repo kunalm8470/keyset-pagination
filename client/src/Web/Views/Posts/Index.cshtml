@@ -1,0 +1,110 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+@model List<Post>
+
+<div id="posts">
+    @{
+        foreach (Post post in Model)
+        {
+            <div class="post card">
+                <div class="card-header">
+                    @post.Title
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">@post.Author</div>
+                        <div class="col"></div>
+                        <div class="col createdAt">@post.CreatedAt</div>
+                    </div>
+
+                    <br />
+
+                    <p>@post.Body</p>
+                </div>
+            </div>
+
+            <br />
+        }
+    }
+</div>
+
+@if (ViewData.ContainsKey("searchAfter"))
+{
+    <button id="load-more-button" class="btn btn-primary" data-last-post-id="@ViewData["searchAfter"]">Load more</button>
+}
+
+@section Scripts {
+    <script>
+        function getRelativeTime(d1, d2 = new Date()) {
+            const units = {
+                year: 24 * 60 * 60 * 1000 * 365,
+                month: 24 * 60 * 60 * 1000 * 365 / 12,
+                day: 24 * 60 * 60 * 1000,
+                hour: 60 * 60 * 1000,
+                minute: 60 * 1000,
+                second: 1000
+            };
+
+            const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+
+            const elapsed = d1 - d2
+
+            // "Math.abs" accounts for both "past" & "future" scenarios
+            for (let unit in units) {
+                if (Math.abs(elapsed) > units[unit] || unit == 'second') {
+                    return rtf.format(Math.round(elapsed / units[unit]), unit);
+                }
+            }
+        }
+
+        $(function () {
+            // Format to relative time
+            $('.createdAt').each(function () {
+                const absoluteTime = new Date($(this).text());
+
+                $(this).attr('title', absoluteTime.toDateString());
+
+                $(this).text(getRelativeTime(absoluteTime));
+            });
+
+            $('#load-more-button').click(function () {
+                // Get the createdAt from the last post
+                const lastPostId = $(this).data('last-post-id');
+
+                const url = '@Url.Action("LoadMoreProducts", "Posts")' + '?searchAfter=' + lastPostId + '&limit=50';
+
+                $.post(url, function (data) {
+                    if (data.length > 0) {
+                        let postHtml = '';
+
+                        const lastCreatedAt = $(data).slice(-1)[0].createdAt;
+
+                        $('#load-more-button').data('last-post-id', lastCreatedAt);
+
+                        for (const post of data) {
+                            postHtml += '<div class="post card">';
+                            postHtml += `<div class="card-header">${post.title}</div>`;
+                            postHtml += '<div class="card-body">';
+                            postHtml += '<div class="row">';
+                            postHtml += `<div class="col">${post.author}</div>`;
+                            postHtml += '<div class="col"></div>';
+                            postHtml += `<div class="col createdAt" title="${new Date(post.createdAt).toDateString()}">${getRelativeTime(new Date(post.createdAt))}</div>`;
+                            postHtml += '</div>';
+                            postHtml += '<br/>';
+                            postHtml += `<p>${post.body}</p>`;
+                            postHtml += `</div>`;
+                            postHtml += `</div>`;
+                            postHtml += '<br/>';
+                        }
+
+                        $('#posts').append(postHtml);
+                    } else {
+                        $('#load-more-button').remove();
+                    }
+                });
+            });
+        });
+    </script>
+}
